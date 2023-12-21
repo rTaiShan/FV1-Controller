@@ -2,6 +2,7 @@
 #include "EEPROM.h"
 #include <PinButton.h>
 #include <programSelect.h>
+#include <pins.h>
 
 uint8_t prevNextCode = 0;
 uint16_t store = 0;
@@ -21,7 +22,9 @@ void getFavoritePatch() {
   encoderVal = saved;
   if (encoderVal < 0) encoderVal = NUMPATCHES - 1;
   else if (encoderVal >= NUMPATCHES) encoderVal = 0;
+  #ifdef DEBUG
   Serial.println("Favorite patch: " + String(encoderVal));
+  #endif
 }
 
 int8_t readRotary() {
@@ -54,7 +57,9 @@ void updateRotary() {
   }
   if (encoderVal != lastEncoderVal) {
     lastEncoderVal = encoderVal;
+    #ifdef DEBUG
     Serial.println("New encoderVal: " + String(encoderVal));
+    #endif
   }
 }
 
@@ -63,14 +68,20 @@ void handleEncoderButton() {
 
   if (encoderButton.isSingleClick()) {
     momentarySwitch = !momentarySwitch;
+    #ifdef DEBUG
     Serial.println("Single click, momentarySwitch: " + String(momentarySwitch ? "True" : "False"));
+    #endif
   }
   if (encoderButton.isLongClick()) {
     EEPROM.update(SAVEDPATCHADDR, encoderVal);
+    #ifdef DEBUG
     Serial.println("Long click, encoderVal: " + String(encoderVal));
+    #endif
   }
   if (encoderButton.isDoubleClick()) {
     getFavoritePatch();
+    #ifdef DEBUG
     Serial.println("Double click, encoderVal: " + String(encoderVal));
+    #endif
   }
 }
