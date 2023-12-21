@@ -1,5 +1,6 @@
 #include <Arduino.h>
 #include <enc4094.h>
+#include <pins.h>
 #include "programSelect.h"
 #include <PinButton.h>
 #include <programSelect.h>
@@ -43,7 +44,7 @@ bool dataChanged() {
 }
 
 void writeSipoData() {
-    // Write data to shift register
+    // Write data to shift register (takes approx. 272 us)
     if (!dataChanged()) {
         return;
     }
