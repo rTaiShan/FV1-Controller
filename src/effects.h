@@ -5,7 +5,7 @@
 //   const char* parameters[3];
 // };
 
-const char* const EFFECTLIST PROGMEM = 
+const char EFFECTLIST[] PROGMEM = 
     "Effect 01\nE01P1\nE01P2\nE01P3\n"
     "Effect 02\nE02P1\nE02P2\nE02P3\n"
     "Effect 03\nE03P1\nE03P2\nE03P3\n"
