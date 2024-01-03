@@ -59,20 +59,27 @@ void drawEffect()
 {
     uint8_t startIndex = selectedProgram * 4;
     uint8_t index = 0;
-    uint8_t head = 0;
-    while (index < startIndex)
-        if (EFFECTLIST[head++] == '\n')
+    uint16_t head = 0;
+    while (index < startIndex) {
+        if (pgm_read_byte_near(EFFECTLIST + head) == '\n')
             index++;
+        head++;
+    }
     uint8_t numLines = 0;
     while (numLines <= 3)
     {
-        if (EFFECTLIST[head] == '\n')
+        char c = static_cast<char>(pgm_read_byte_near(EFFECTLIST + head));
+        if (c == '\n')
         {
             display.println();
+            Serial.println();
             numLines++;
         }
         else
-            display.print(EFFECTLIST[head]);
+        {
+            Serial.print(c);
+            display.print(c);
+        }
         head++;
     }
 }
