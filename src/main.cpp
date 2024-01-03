@@ -6,10 +6,12 @@
 #include "EEPROM.h"
 #include <PinButton.h>
 
-#define DEBUG
+// #define DEBUG
 #define BAUDRATE 9600
 #define NUMPATCHES 32
 #define SAVEDPATCHADDR 180
+#define BIASADDR 128
+#define CONTRASTADDR 132
 
 void initializePins();
 void drawScreen();
@@ -41,15 +43,23 @@ int8_t oldSelectedProgram = 32;
 
 void handleScreen()
 {
+    // TODO: Show warning when favorite patch is changed
+    // TODO: Show icon to reflect the momentarySwitch variable
+    // Show patch name and parameters
     if (selectedProgram != oldSelectedProgram)
     {
+        #ifdef DEBUG
         Serial.println(selectedProgram);
+        #endif
         digitalWrite(BACKLIGHTPIN, HIGH);
         drawScreen();
         oldSelectedProgram = selectedProgram;
         lastUpdate = millis();
     }
-    else if (millis() - lastUpdate > 10000)
+    // Turn off backlight after 10s
+    // else if (millis() - lastUpdate > 10000)
+    // Once again, for some reason my arduino runs on double the expected frequency
+    else if (millis() - lastUpdate > 20000)
     {
         digitalWrite(BACKLIGHTPIN, LOW);
     }
@@ -72,13 +82,17 @@ void drawEffect()
         if (c == '\n')
         {
             display.println();
+            #ifdef DEBUG
             Serial.println();
+            #endif
             numLines++;
         }
         else
         {
-            Serial.print(c);
             display.print(c);
+            #ifdef DEBUG
+            Serial.print(c);
+            #endif
         }
         head++;
     }
@@ -133,6 +147,17 @@ bool dataChanged()
     return false;
 }
 
+void printSipoData() {
+    Serial.println("RELAY at pin Q" + String(RELAYINDEX + 1) + (sipoData[RELAYINDEX] ? " HIGH" : " LOW"));
+    Serial.println("FV1T0 at pin Q" + String(FV1T0INDEX + 1) + (sipoData[FV1T0INDEX] ? " HIGH" : " LOW"));
+    Serial.println("S0 at pin Q" + String(S0INDEX + 1) + (sipoData[S0INDEX] ? " HIGH" : " LOW"));
+    Serial.println("S1 at pin Q" + String(S1INDEX + 1) + (sipoData[S1INDEX] ? " HIGH" : " LOW"));
+    Serial.println("S2 at pin Q" + String(S2INDEX + 1) + (sipoData[S2INDEX] ? " HIGH" : " LOW"));
+    Serial.println("EEPROMENABLE0 at pin Q" + String(EEPROMENABLE0INDEX + 1) + (sipoData[EEPROMENABLE0INDEX] ? " HIGH" : " LOW"));
+    Serial.println("EEPROMENABLE1 at pin Q" + String(EEPROMENABLE1INDEX + 1) + (sipoData[EEPROMENABLE1INDEX] ? " HIGH" : " LOW"));
+    Serial.println("EEPROMENABLE2 at pin Q" + String(EEPROMENABLE2INDEX + 1) + (sipoData[EEPROMENABLE2INDEX] ? " HIGH" : " LOW"));
+}
+
 void writeSipoData()
 {
     // Write data to shift register (takes approx. 272 us)
@@ -140,6 +165,9 @@ void writeSipoData()
     {
         return;
     }
+    #ifdef DEBUG
+    printSipoData();
+    #endif
     digitalWrite(SIPOSTROBEPIN, LOW);
     for (int i = 7; i >= 0; i--)
     {
@@ -229,6 +257,33 @@ void handleEncoderButton()
         getFavoritePatch();
 }
 
+void handleScreenCallibration() {
+    if (!Serial.available())
+        return;
+    switch (Serial.read()) {
+        case 'b':
+        {
+            int newBias = Serial.parseInt();
+            display.setBias(newBias);
+            EEPROM.update(BIASADDR, newBias);
+            Serial.println("New bias: " + String(newBias));
+            break;
+        }
+        case 'c':
+        {
+            int newContrast = Serial.parseInt();
+            display.setContrast(newContrast);
+            EEPROM.update(CONTRASTADDR, newContrast);
+            Serial.println("New contrast: " + String(newContrast));
+            break;
+        }
+        default: 
+        {
+            break;
+        }
+    }
+}
+
 void initializePins()
 {
     // Initializing Inputs
@@ -247,19 +302,20 @@ void setup()
 {
     Serial.begin(BAUDRATE / 2); // My pro micro transmits at 2x the baud rate (yes, weird)
     initializePins();
-    display.begin();
-    display.clearDisplay();
-
-    // Display callibration
-    // TODO Make contrast and bias runtime settable, save in internal eeprom
-    display.setContrast(70);
-    display.setBias(4);
-    display.setTextColor(BLACK);
-    display.setTextSize(1);
-
-    display.display();
+    initializeDisplay();
 
     getFavoritePatch(); // Fetch selected patch from internal EEPROM
+}
+
+void initializeDisplay()
+{
+    display.begin();
+    display.clearDisplay();
+    display.setContrast(EEPROM.read(CONTRASTADDR));
+    display.setBias(EEPROM.read(BIASADDR));
+    display.setTextColor(BLACK);
+    display.setTextSize(1);
+    display.display();
 }
 
 void loop()
@@ -267,5 +323,8 @@ void loop()
     handleEncoderButton();
     updateRotary();
     handleSIPOEncoder();
+    #ifdef DEBUG
+    handleScreenCallibration();
+    #endif
     handleScreen();
 }
