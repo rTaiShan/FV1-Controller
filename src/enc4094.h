@@ -6,5 +6,3 @@
 #define EEPROMENABLE0INDEX 5
 #define EEPROMENABLE1INDEX 6
 #define EEPROMENABLE2INDEX 7
-
-void handleSIPOEncoder();

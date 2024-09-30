@@ -18,7 +18,7 @@ It is meant to control a FV1 multi-effects pedal. For such, it must include feat
 To optimize the available pins, a CD4094 SIPO shift register will be used, so that it controls:
 
 * EEPROM Select (3 outputs)
-* ESP32 Program pins (3+1 outputs)
+* FV1 Program pins (3+1 outputs)
 * Relay + LED (1 output)
     
 With 3 pins:
