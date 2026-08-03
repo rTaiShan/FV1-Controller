@@ -31,7 +31,7 @@ void drawEffect()
         head++;
     }
     uint8_t numLines = 0;
-    while (numLines <= 3)
+    while (numLines < fv1controller::EFFECT_LINES_PER_PATCH)
     {
         char c = static_cast<char>(pgm_read_byte_near(EFFECTLIST + head));
         if (c == '\n')
