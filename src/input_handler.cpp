@@ -22,6 +22,11 @@ void getFavoritePatch()
         selectedProgram = 0;
 }
 
+void getStoredMode()
+{
+    momentarySwitch = EEPROM.read(fv1controller::MOMENTARYMODEADDR) != 0;
+}
+
 int8_t readRotary()
 {
     static int8_t rot_enc_table[] = {0, 1, 1, 0, 1, 0, 0, 1, 1, 0, 0, 1, 0, 1, 1, 0};
@@ -64,7 +69,10 @@ void handleEncoderButton()
     if (!encoderButton.isClick())
         return;
     if (encoderButton.isSingleClick())
+    {
         momentarySwitch = !momentarySwitch;
+        EEPROM.update(fv1controller::MOMENTARYMODEADDR, momentarySwitch ? 1 : 0);
+    }
     if (encoderButton.isLongClick())
         EEPROM.update(fv1controller::SAVEDPATCHADDR, selectedProgram);
     if (encoderButton.isDoubleClick())

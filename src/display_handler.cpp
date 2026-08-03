@@ -21,19 +21,11 @@ void drawEffect()
     display.print("] ");
     display.print(selectedProgram + 1);
     display.print(". ");
-    uint8_t startIndex = selectedProgram * fv1controller::EFFECT_LINES_PER_PATCH;
-    uint8_t index = 0;
-    uint16_t head = 0;
-    while (index < startIndex)
-    {
-        if (pgm_read_byte_near(EFFECTLIST + head) == '\n')
-            index++;
-        head++;
-    }
+    uint16_t head = getEffectOffsetForPatch(selectedProgram);
     uint8_t numLines = 0;
     while (numLines < fv1controller::EFFECT_LINES_PER_PATCH)
     {
-        char c = static_cast<char>(pgm_read_byte_near(EFFECTLIST + head));
+        char c = readEffectByte(selectedProgram, head);
         if (c == '\n')
         {
             display.println();

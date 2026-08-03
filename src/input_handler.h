@@ -11,4 +11,5 @@ void handleEncoderButton();
 void updateRotary();
 int8_t readRotary();
 void getFavoritePatch();
+void getStoredMode();
 void handleScreenCallibration();

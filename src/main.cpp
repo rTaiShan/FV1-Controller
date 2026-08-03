@@ -9,11 +9,12 @@
 
 void setup()
 {
-    Serial.begin(fv1controller::BAUDRATE / 2);
+    Serial.begin(fv1controller::BAUDRATE);
     initializePins();
     initializeFootswitchInterrupt();
     initializeDisplay();
     getFavoritePatch();
+    getStoredMode();
 }
 
 void loop()
