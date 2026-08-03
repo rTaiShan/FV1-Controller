@@ -1,8 +1,14 @@
-#define RELAYINDEX 0
-#define FV1T0INDEX 1
-#define S0INDEX 2
-#define S1INDEX 3
-#define S2INDEX 4
-#define EEPROMENABLE0INDEX 5
-#define EEPROMENABLE1INDEX 6
-#define EEPROMENABLE2INDEX 7
+#pragma once
+
+namespace fv1controller {
+
+constexpr uint8_t RELAYINDEX = 0;
+constexpr uint8_t T0INDEX = 1;
+constexpr uint8_t S0INDEX = 2;
+constexpr uint8_t S1INDEX = 3;
+constexpr uint8_t S2INDEX = 4;
+constexpr uint8_t EEPROMENABLE0INDEX = 5;
+constexpr uint8_t EEPROMENABLE1INDEX = 6;
+constexpr uint8_t EEPROMENABLE2INDEX = 7;
+
+}  // namespace fv1controller
