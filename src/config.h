@@ -7,6 +7,8 @@ namespace fv1controller {
 constexpr uint32_t BAUDRATE = 57600;
 constexpr uint8_t CUSTOM_PATCH_COUNT = 24;
 constexpr uint8_t BUILTIN_PATCH_COUNT = 8;
+// Uncomment to hide the 8 built-in FV1 patches and expose only the 24 customizable slots.
+// #define DISABLE_BUILTIN_PATCHES
 #ifdef DISABLE_BUILTIN_PATCHES
 constexpr uint8_t NUMPATCHES = CUSTOM_PATCH_COUNT;
 #else

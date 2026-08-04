@@ -2,9 +2,6 @@
 #include <avr/eeprom.h>
 #include "config.h"
 
-// Uncomment to disable the 8 built-in FV1 patches and expose only the 24 customizable slots.
-// #define DISABLE_BUILTIN_PATCHES
-
 const char CUSTOM_EFFECTLIST[] EEMEM =
     "Custom 01\nGain 3\nTone 2\nMix 4\n"
     "Custom 02\nRate 4\nDepth 5\nMix 6\n"
