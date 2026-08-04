@@ -1,4 +1,5 @@
 #include "sipo_handler.h"
+#include "protocol_handler.h"
 
 namespace {
 
@@ -7,6 +8,21 @@ volatile unsigned long footswitchLastInterruptMicros = 0;
 unsigned long footswitchLastDebounceMillis = 0;
 constexpr unsigned long FOOTSWITCH_DEBOUNCE_MS = 20;
 constexpr unsigned long FOOTSWITCH_ISR_DEBOUNCE_US = 5000;
+bool externalEepromAccessActive = false;
+bool savedSipoData[fv1controller::SIPO_DATA_BITS];
+
+void clearFootswitchInputState()
+{
+    unsigned long interruptMicros = micros();
+    unsigned long debounceMillis = millis();
+
+    noInterrupts();
+    footswitchInterruptPending = false;
+    footswitchLastInterruptMicros = interruptMicros;
+    interrupts();
+
+    footswitchLastDebounceMillis = debounceMillis;
+}
 
 }  // namespace
 
@@ -55,16 +71,24 @@ void processFootswitchInput()
 
 void updateSipoData()
 {
+    if (externalEepromAccessActive)
+    {
+        return;
+    }
+
     processFootswitchInput();
 
-    sipoData[fv1controller::T0INDEX] = (selectedProgram >= 8);
+    const bool selectedCustomPatch = selectedProgram < fv1controller::CUSTOM_PATCH_COUNT;
+    const uint8_t selectedExternalBank = selectedProgram / 8;
+
+    sipoData[fv1controller::T0INDEX] = selectedCustomPatch;
     sipoData[fv1controller::S0INDEX] = selectedProgram & 1;
     sipoData[fv1controller::S1INDEX] = selectedProgram & 2;
     sipoData[fv1controller::S2INDEX] = selectedProgram & 4;
 
-    sipoData[fv1controller::EEPROMENABLE0INDEX] = !(selectedProgram >= 8 && selectedProgram < 16);
-    sipoData[fv1controller::EEPROMENABLE1INDEX] = !(selectedProgram >= 16 && selectedProgram < 24);
-    sipoData[fv1controller::EEPROMENABLE2INDEX] = !(selectedProgram >= 24);
+    sipoData[fv1controller::EEPROMENABLE0INDEX] = !(selectedCustomPatch && selectedExternalBank == 0);
+    sipoData[fv1controller::EEPROMENABLE1INDEX] = !(selectedCustomPatch && selectedExternalBank == 1);
+    sipoData[fv1controller::EEPROMENABLE2INDEX] = !(selectedCustomPatch && selectedExternalBank == 2);
 }
 
 bool dataChanged()
@@ -81,14 +105,14 @@ bool dataChanged()
 
 void printSipoData()
 {
-    Serial.println("RELAY at pin Q" + String(fv1controller::RELAYINDEX + 1) + (sipoData[fv1controller::RELAYINDEX] ? " HIGH" : " LOW"));
-    Serial.println("T0 at pin Q" + String(fv1controller::T0INDEX + 1) + (sipoData[fv1controller::T0INDEX] ? " HIGH" : " LOW"));
-    Serial.println("S0 at pin Q" + String(fv1controller::S0INDEX + 1) + (sipoData[fv1controller::S0INDEX] ? " HIGH" : " LOW"));
-    Serial.println("S1 at pin Q" + String(fv1controller::S1INDEX + 1) + (sipoData[fv1controller::S1INDEX] ? " HIGH" : " LOW"));
-    Serial.println("S2 at pin Q" + String(fv1controller::S2INDEX + 1) + (sipoData[fv1controller::S2INDEX] ? " HIGH" : " LOW"));
-    Serial.println("EEPROMENABLE0 at pin Q" + String(fv1controller::EEPROMENABLE0INDEX + 1) + (sipoData[fv1controller::EEPROMENABLE0INDEX] ? " HIGH" : " LOW"));
-    Serial.println("EEPROMENABLE1 at pin Q" + String(fv1controller::EEPROMENABLE1INDEX + 1) + (sipoData[fv1controller::EEPROMENABLE1INDEX] ? " HIGH" : " LOW"));
-    Serial.println("EEPROMENABLE2 at pin Q" + String(fv1controller::EEPROMENABLE2INDEX + 1) + (sipoData[fv1controller::EEPROMENABLE2INDEX] ? " HIGH" : " LOW"));
+    sendProtocolPrint("RELAY at pin Q" + String(fv1controller::RELAYINDEX + 1) + (sipoData[fv1controller::RELAYINDEX] ? " HIGH" : " LOW"));
+    sendProtocolPrint("T0 at pin Q" + String(fv1controller::T0INDEX + 1) + (sipoData[fv1controller::T0INDEX] ? " HIGH" : " LOW"));
+    sendProtocolPrint("S0 at pin Q" + String(fv1controller::S0INDEX + 1) + (sipoData[fv1controller::S0INDEX] ? " HIGH" : " LOW"));
+    sendProtocolPrint("S1 at pin Q" + String(fv1controller::S1INDEX + 1) + (sipoData[fv1controller::S1INDEX] ? " HIGH" : " LOW"));
+    sendProtocolPrint("S2 at pin Q" + String(fv1controller::S2INDEX + 1) + (sipoData[fv1controller::S2INDEX] ? " HIGH" : " LOW"));
+    sendProtocolPrint("EEPROMENABLE0 at pin Q" + String(fv1controller::EEPROMENABLE0INDEX + 1) + (sipoData[fv1controller::EEPROMENABLE0INDEX] ? " HIGH" : " LOW"));
+    sendProtocolPrint("EEPROMENABLE1 at pin Q" + String(fv1controller::EEPROMENABLE1INDEX + 1) + (sipoData[fv1controller::EEPROMENABLE1INDEX] ? " HIGH" : " LOW"));
+    sendProtocolPrint("EEPROMENABLE2 at pin Q" + String(fv1controller::EEPROMENABLE2INDEX + 1) + (sipoData[fv1controller::EEPROMENABLE2INDEX] ? " HIGH" : " LOW"));
 }
 
 void writeSipoData()
@@ -119,4 +143,59 @@ void handleSIPOEncoder()
 {
     updateSipoData();
     writeSipoData();
+}
+
+bool beginExternalEepromAccess(uint8_t idx)
+{
+    if (idx < 1 || idx > 3 || externalEepromAccessActive)
+    {
+        return false;
+    }
+
+    for (uint8_t i = 0; i < fv1controller::SIPO_DATA_BITS; i++)
+    {
+        savedSipoData[i] = sipoData[i];
+    }
+
+    clearFootswitchInputState();
+    externalEepromAccessActive = true;
+    sipoData[fv1controller::RELAYINDEX] = LOW;
+    sipoData[fv1controller::T0INDEX] = LOW;
+    sipoData[fv1controller::EEPROMENABLE0INDEX] = HIGH;
+    sipoData[fv1controller::EEPROMENABLE1INDEX] = HIGH;
+    sipoData[fv1controller::EEPROMENABLE2INDEX] = HIGH;
+
+    switch (idx)
+    {
+        case 1:
+            sipoData[fv1controller::EEPROMENABLE0INDEX] = LOW;
+            break;
+        case 2:
+            sipoData[fv1controller::EEPROMENABLE1INDEX] = LOW;
+            break;
+        case 3:
+            sipoData[fv1controller::EEPROMENABLE2INDEX] = LOW;
+            break;
+        default:
+            return false;
+    }
+
+    writeSipoData();
+    return true;
+}
+
+void endExternalEepromAccess()
+{
+    if (!externalEepromAccessActive)
+    {
+        return;
+    }
+
+    for (uint8_t i = 0; i < fv1controller::SIPO_DATA_BITS; i++)
+    {
+        sipoData[i] = savedSipoData[i];
+    }
+    writeSipoData();
+    clearFootswitchInputState();
+    externalEepromAccessActive = false;
 }

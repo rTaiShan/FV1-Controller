@@ -1,4 +1,5 @@
 #include "input_handler.h"
+#include <EEPROM.h>
 
 void initializePins()
 {
@@ -12,17 +13,22 @@ void initializePins()
     pinMode(fv1controller::BACKLIGHTPIN, OUTPUT);
 }
 
-void getFavoritePatch()
+uint8_t readFavoritePatchSelection()
 {
-    int8_t saved = EEPROM.read(fv1controller::SAVEDPATCHADDR);
-    selectedProgram = saved;
-    if (selectedProgram < 0)
-        selectedProgram = fv1controller::NUMPATCHES - 1;
-    else if (selectedProgram >= fv1controller::NUMPATCHES)
-        selectedProgram = 0;
+    uint8_t saved = EEPROM.read(fv1controller::SAVEDPATCHADDR);
+    if (saved >= fv1controller::NUMPATCHES)
+    {
+        return 0;
+    }
+    return saved;
 }
 
-void getStoredMode()
+void loadFavoritePatchSelection()
+{
+    selectedProgram = readFavoritePatchSelection();
+}
+
+void loadStoredSwitchMode()
 {
     momentarySwitch = EEPROM.read(fv1controller::MOMENTARYMODEADDR) != 0;
 }
@@ -76,32 +82,5 @@ void handleEncoderButton()
     if (encoderButton.isLongClick())
         EEPROM.update(fv1controller::SAVEDPATCHADDR, selectedProgram);
     if (encoderButton.isDoubleClick())
-        getFavoritePatch();
-}
-
-void handleScreenCallibration()
-{
-    if (!Serial.available())
-        return;
-    switch (Serial.read())
-    {
-        case 'b':
-        {
-            int newBias = Serial.parseInt();
-            display.setBias(newBias);
-            EEPROM.update(fv1controller::BIASADDR, newBias);
-            Serial.println("New bias: " + String(newBias));
-            break;
-        }
-        case 'c':
-        {
-            int newContrast = Serial.parseInt();
-            display.setContrast(newContrast);
-            EEPROM.update(fv1controller::CONTRASTADDR, newContrast);
-            Serial.println("New contrast: " + String(newContrast));
-            break;
-        }
-        default:
-            break;
-    }
+        loadFavoritePatchSelection();
 }

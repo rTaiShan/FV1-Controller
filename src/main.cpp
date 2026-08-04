@@ -3,9 +3,8 @@
 #include "controller_state.h"
 #include "display_handler.h"
 #include "input_handler.h"
+#include "protocol_handler.h"
 #include "sipo_handler.h"
-
-// #define DEBUG
 
 void setup()
 {
@@ -13,17 +12,15 @@ void setup()
     initializePins();
     initializeFootswitchInterrupt();
     initializeDisplay();
-    getFavoritePatch();
-    getStoredMode();
+    loadFavoritePatchSelection();
+    loadStoredSwitchMode();
 }
 
 void loop()
 {
+    handleProtocol();
     handleEncoderButton();
     updateRotary();
     handleSIPOEncoder();
-#ifdef DEBUG
-    handleScreenCallibration();
-#endif
     handleScreen();
 }

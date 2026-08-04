@@ -10,3 +10,5 @@ void writeSipoData();
 void handleSIPOEncoder();
 void printSipoData();
 bool dataChanged();
+bool beginExternalEepromAccess(uint8_t idx);
+void endExternalEepromAccess();

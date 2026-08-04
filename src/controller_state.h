@@ -6,12 +6,10 @@
 #include "enc4094.h"
 #include "pins.h"
 
-extern bool backLight;
 extern long lastUpdate;
 
 extern bool sipoData[fv1controller::SIPO_DATA_BITS];
 extern bool oldSipoData[fv1controller::SIPO_DATA_BITS];
-extern PinButton fswButton;
 extern PinButton encoderButton;
 
 extern uint8_t prevNextCode;

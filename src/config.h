@@ -4,6 +4,9 @@
 
 namespace fv1controller {
 
+// Uncomment to enable protocol-shaped SIPO debug output.
+// #define DEBUG
+
 constexpr uint32_t BAUDRATE = 57600;
 constexpr uint8_t CUSTOM_PATCH_COUNT = 24;
 constexpr uint8_t BUILTIN_PATCH_COUNT = 8;
@@ -22,5 +25,13 @@ constexpr uint16_t CONTRASTADDR = EEPROM_CONFIG_BASE + 3;
 constexpr uint8_t SIPO_DATA_BITS = 8;
 constexpr uint32_t DISPLAY_BACKLIGHT_TIMEOUT_MS = 20000;
 constexpr uint8_t EFFECT_LINES_PER_PATCH = 4;
+constexpr uint8_t PROTOCOL_LINE_BUFFER_SIZE = 128;
+constexpr uint8_t PROTOCOL_MAX_WRITE_LEN = 30;
+constexpr uint8_t PROTOCOL_DUMP_CHUNK_LEN = 32;
+constexpr uint16_t INTERNAL_EEPROM_SIZE = 1024;
+constexpr uint16_t EXTERNAL_EEPROM_SIZE = 4096;
+constexpr uint8_t EXTERNAL_EEPROM_PAGE_SIZE = 32;
+constexpr uint8_t EXTERNAL_EEPROM_I2C_ADDR = 0x50;
+constexpr uint32_t EXTERNAL_EEPROM_WIRE_TIMEOUT_US = 25000;
 
 }  // namespace fv1controller

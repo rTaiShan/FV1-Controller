@@ -38,6 +38,29 @@ const char BUILTIN_EFFECTLIST[] PROGMEM =
     "Reverb 1\nReverb time\nHF filter\nLF filter\n"
     "Reverb 2\nReverb time\nHF filter\nLF filter\n";
 
+inline uint16_t getCustomEffectListMaxLength()
+{
+    const uint16_t listStart = static_cast<uint16_t>(reinterpret_cast<uintptr_t>(CUSTOM_EFFECTLIST));
+    if (listStart >= fv1controller::EEPROM_CONFIG_BASE)
+    {
+        return 0;
+    }
+    return fv1controller::EEPROM_CONFIG_BASE - listStart;
+}
+
+inline uint16_t getEffectListLengthForPatch(uint8_t patchIndex)
+{
+    if (patchIndex >= fv1controller::NUMPATCHES)
+    {
+        return 0;
+    }
+    if (patchIndex >= fv1controller::CUSTOM_PATCH_COUNT)
+    {
+        return sizeof(BUILTIN_EFFECTLIST) - 1;
+    }
+    return getCustomEffectListMaxLength();
+}
+
 inline uint16_t getEffectOffsetForPatch(uint8_t patchIndex)
 {
     if (patchIndex >= fv1controller::NUMPATCHES)
@@ -46,12 +69,13 @@ inline uint16_t getEffectOffsetForPatch(uint8_t patchIndex)
     }
 
     const bool useBuiltin = (patchIndex >= fv1controller::CUSTOM_PATCH_COUNT);
+    const uint16_t listLength = getEffectListLengthForPatch(patchIndex);
     uint16_t head = 0;
     uint8_t linesToSkip = useBuiltin ? (patchIndex - fv1controller::CUSTOM_PATCH_COUNT) * fv1controller::EFFECT_LINES_PER_PATCH
                                      : patchIndex * fv1controller::EFFECT_LINES_PER_PATCH;
     uint8_t linesSkipped = 0;
 
-    while (linesSkipped < linesToSkip)
+    while (linesSkipped < linesToSkip && head < listLength)
     {
         char c = useBuiltin ? static_cast<char>(pgm_read_byte_near(BUILTIN_EFFECTLIST + head))
                            : static_cast<char>(eeprom_read_byte(reinterpret_cast<const uint8_t*>(CUSTOM_EFFECTLIST + head)));
@@ -67,7 +91,7 @@ inline uint16_t getEffectOffsetForPatch(uint8_t patchIndex)
 
 inline char readEffectByte(uint8_t patchIndex, uint16_t offset)
 {
-    if (patchIndex >= fv1controller::NUMPATCHES)
+    if (patchIndex >= fv1controller::NUMPATCHES || offset >= getEffectListLengthForPatch(patchIndex))
     {
         return '\0';
     }

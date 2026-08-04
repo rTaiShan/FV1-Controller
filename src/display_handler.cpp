@@ -1,4 +1,6 @@
 #include "display_handler.h"
+#include <EEPROM.h>
+#include "input_handler.h"
 
 Adafruit_PCD8544 display = Adafruit_PCD8544(
     fv1controller::DISPLAYSCLKPIN,
@@ -12,7 +14,7 @@ static bool lastDisplayedFavoriteState = false;
 
 void drawEffect()
 {
-    bool isFavorite = (selectedProgram == EEPROM.read(fv1controller::SAVEDPATCHADDR));
+    bool isFavorite = (selectedProgram == readFavoritePatchSelection());
     display.print(momentarySwitch ? "[M" : "[T");
     if (isFavorite)
     {
@@ -26,6 +28,10 @@ void drawEffect()
     while (numLines < fv1controller::EFFECT_LINES_PER_PATCH)
     {
         char c = readEffectByte(selectedProgram, head);
+        if (c == '\0')
+        {
+            break;
+        }
         if (c == '\n')
         {
             display.println();
@@ -49,7 +55,7 @@ void drawScreen()
 
 void handleScreen()
 {
-    bool isFavorite = (selectedProgram == EEPROM.read(fv1controller::SAVEDPATCHADDR));
+    bool isFavorite = (selectedProgram == readFavoritePatchSelection());
     bool shouldRefresh = (selectedProgram != oldSelectedProgram) || (momentarySwitch != lastDisplayedMomentarySwitch) || (isFavorite != lastDisplayedFavoriteState);
     if (shouldRefresh)
     {
