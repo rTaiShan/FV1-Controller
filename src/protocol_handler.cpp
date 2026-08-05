@@ -104,6 +104,11 @@ void applyInternalEepromWrite(uint16_t start, uint16_t len)
     {
         loadStoredSwitchMode();
     }
+    if (overlapsAddress(start, len, fv1controller::BUILTINPATCHESDISABLEDADDR))
+    {
+        loadStoredBuiltInPatchVisibility();
+        loadFavoritePatchSelection();
+    }
 }
 
 void writeInternalEeprom(uint16_t start, const uint8_t* payload, uint16_t len)

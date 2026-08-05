@@ -12,6 +12,7 @@ void setup()
     initializePins();
     initializeFootswitchInterrupt();
     initializeDisplay();
+    loadStoredBuiltInPatchVisibility();
     loadFavoritePatchSelection();
     loadStoredSwitchMode();
 }

@@ -1,6 +1,7 @@
 #include <Arduino.h>
 #include <avr/eeprom.h>
 #include "config.h"
+#include "controller_state.h"
 
 const char CUSTOM_EFFECTLIST[] EEMEM =
     "Custom 01\nGain 3\nTone 2\nMix 4\n"
@@ -32,7 +33,7 @@ const char BUILTIN_EFFECTLIST[] PROGMEM =
     "Chorus-Reverb\nReverb mix\nChorus rate\nChorus mix\n"
     "Flange-Reverb\nReverb mix\nFlange rate\nFlange mix\n"
     "Tremolo-Reverb\nReverb mix\nTremolo rate\nTremolo mix\n"
-    "Pitch Shift\nPitch +/-4\nsemitones\n-\n"
+    "Pitch Shift\nPitch +/-4\nSemitones\n-\n"
     "Pitch-Echo\nPitch shift\nEcho delay\nEcho mix\n"
     "Test\n-\n-\n-\n"
     "Reverb 1\nReverb time\nHF filter\nLF filter\n"
@@ -50,7 +51,7 @@ inline uint16_t getCustomEffectListMaxLength()
 
 inline uint16_t getEffectListLengthForPatch(uint8_t patchIndex)
 {
-    if (patchIndex >= fv1controller::NUMPATCHES)
+    if (patchIndex >= getAvailablePatchCount())
     {
         return 0;
     }
@@ -63,7 +64,7 @@ inline uint16_t getEffectListLengthForPatch(uint8_t patchIndex)
 
 inline uint16_t getEffectOffsetForPatch(uint8_t patchIndex)
 {
-    if (patchIndex >= fv1controller::NUMPATCHES)
+    if (patchIndex >= getAvailablePatchCount())
     {
         return 0;
     }
@@ -91,7 +92,7 @@ inline uint16_t getEffectOffsetForPatch(uint8_t patchIndex)
 
 inline char readEffectByte(uint8_t patchIndex, uint16_t offset)
 {
-    if (patchIndex >= fv1controller::NUMPATCHES || offset >= getEffectListLengthForPatch(patchIndex))
+    if (patchIndex >= getAvailablePatchCount() || offset >= getEffectListLengthForPatch(patchIndex))
     {
         return '\0';
     }

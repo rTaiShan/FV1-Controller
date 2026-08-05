@@ -16,7 +16,7 @@ void initializePins()
 uint8_t readFavoritePatchSelection()
 {
     uint8_t saved = EEPROM.read(fv1controller::SAVEDPATCHADDR);
-    if (saved >= fv1controller::NUMPATCHES)
+    if (saved >= getAvailablePatchCount())
     {
         return 0;
     }
@@ -31,6 +31,16 @@ void loadFavoritePatchSelection()
 void loadStoredSwitchMode()
 {
     momentarySwitch = EEPROM.read(fv1controller::MOMENTARYMODEADDR) != 0;
+}
+
+void loadStoredBuiltInPatchVisibility()
+{
+    builtinPatchesDisabled = EEPROM.read(fv1controller::BUILTINPATCHESDISABLEDADDR) == 1;
+    if (selectedProgram >= getAvailablePatchCount())
+    {
+        selectedProgram = 0;
+    }
+    oldSelectedProgram = fv1controller::MAX_PATCH_COUNT;
 }
 
 int8_t readRotary()
@@ -62,9 +72,10 @@ void updateRotary()
     if ((val = readRotary()))
     {
         selectedProgram += val;
+        const uint8_t patchCount = getAvailablePatchCount();
         if (selectedProgram == -1)
-            selectedProgram = fv1controller::NUMPATCHES - 1;
-        else if (selectedProgram == fv1controller::NUMPATCHES)
+            selectedProgram = patchCount - 1;
+        else if (selectedProgram == patchCount)
             selectedProgram = 0;
     }
 }
@@ -89,6 +100,7 @@ namespace {
 void (*const inputHandlerEntryPoints[])() = {
     initializePins,
     loadStoredSwitchMode,
+    loadStoredBuiltInPatchVisibility,
     updateRotary,
     handleEncoderButton,
 };

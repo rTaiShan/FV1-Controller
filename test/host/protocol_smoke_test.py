@@ -26,6 +26,7 @@ SAVEDPATCHADDR = 768
 MOMENTARYMODEADDR = 769
 BIASADDR = 770
 CONTRASTADDR = 771
+BUILTINPATCHESDISABLEDADDR = 772
 
 
 class ProtocolError(RuntimeError):
@@ -317,6 +318,7 @@ def test_internal_settings_restore(client: ProtocolClient, reporter: Reporter, i
         internal_backup[MOMENTARYMODEADDR],
         internal_backup[BIASADDR],
         internal_backup[CONTRASTADDR],
+        internal_backup[BUILTINPATCHESDISABLEDADDR],
     ]
 
     modified_settings = False
@@ -325,6 +327,7 @@ def test_internal_settings_restore(client: ProtocolClient, reporter: Reporter, i
             ("WRITE 0 applies bias byte", BIASADDR, [0x04]),
             ("WRITE 0 applies contrast byte", CONTRASTADDR, [0x55]),
             ("WRITE 0 accepts erased favorite", SAVEDPATCHADDR, [0xFF]),
+            ("WRITE 0 toggles built-in patch visibility", BUILTINPATCHESDISABLEDADDR, [0x01]),
         ]
         for name, address, payload in checks:
             response = write_bytes(client, 0, address, payload)
@@ -336,7 +339,7 @@ def test_internal_settings_restore(client: ProtocolClient, reporter: Reporter, i
 
         settings_dump = client.dump(0, INTERNAL_SIZE, reporter, "DUMP 0 after settings writes")
         if settings_dump is not None:
-            expected = {BIASADDR: 0x04, CONTRASTADDR: 0x55, SAVEDPATCHADDR: 0xFF}
+            expected = {BIASADDR: 0x04, CONTRASTADDR: 0x55, SAVEDPATCHADDR: 0xFF, BUILTINPATCHESDISABLEDADDR: 0x01}
             for address, value in expected.items():
                 actual = settings_dump[address]
                 if actual == value:
@@ -355,6 +358,7 @@ def test_internal_settings_restore(client: ProtocolClient, reporter: Reporter, i
         restored[MOMENTARYMODEADDR],
         restored[BIASADDR],
         restored[CONTRASTADDR],
+        restored[BUILTINPATCHESDISABLEDADDR],
     ]
     if restored_values == original:
         reporter.pass_("settings bytes restored", hex_bytes(original))

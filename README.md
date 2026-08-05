@@ -110,7 +110,7 @@ The patch text is split into two categories:
 - the first 24 slots are customizable patches and are stored in EEPROM
 - the last 8 slots are built-in FV1-style patches and are stored in PROGMEM
 
-A compile-time define, DISABLE_BUILTIN_PATCHES, can be used to hide the built-in patches and expose only the customizable slots.
+Built-in patch visibility is controlled by an EEPROM setting. `BUILTINPATCHESDISABLEDADDR = 772` uses `0` to show the 8 built-in patches and `1` to hide them. Erased or otherwise invalid values default to showing built-in patches.
 
 ## EEPROM usage
 
@@ -119,6 +119,7 @@ The firmware uses EEPROM for:
 - the favorite patch index
 - the stored momentary/toggle mode
 - display bias and contrast settings
+- built-in patch visibility
 - custom patch text for the first 24 patch slots
 
 The EEPROM address map is centralized in config.h to keep the layout explicit and avoid accidental overlap.
@@ -249,6 +250,7 @@ The raw internal EEPROM address map remains in `config.h`. With the current layo
 - momentary/toggle mode is at `MOMENTARYMODEADDR`
 - display bias is at `BIASADDR`
 - display contrast is at `CONTRASTADDR`
+- built-in patch visibility is at `BUILTINPATCHESDISABLEDADDR`
 - custom effect text occupies the EEPROM area before `EEPROM_CONFIG_BASE`
 
 The host may write these raw addresses directly. The firmware does not need semantic commands such as `SET BIAS`; those are host-side conveniences if an editor application wants to expose them.

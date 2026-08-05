@@ -11,3 +11,4 @@ int8_t readRotary();
 uint8_t readFavoritePatchSelection();
 void loadFavoritePatchSelection();
 void loadStoredSwitchMode();
+void loadStoredBuiltInPatchVisibility();

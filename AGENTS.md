@@ -69,7 +69,7 @@ The firmware is split into the following source files:
   - split into two sections:
     - 24 customizable patches stored in EEPROM
     - 8 built-in FV1-style patches stored in PROGMEM
-  - supports a compile-time define: DISABLE_BUILTIN_PATCHES
+  - built-in patch visibility is controlled by the EEPROM setting at `BUILTINPATCHESDISABLEDADDR`
 
 ## Important implementation decisions
 
@@ -166,7 +166,7 @@ This was done so the firmware can support a future host-side programming workflo
 
 ### Built-in patch disable switch
 
-The compile-time define DISABLE_BUILTIN_PATCHES can be enabled to hide the last 8 built-in patches and expose only the first 24 customizable slots.
+Built-in patch visibility is controlled at runtime through EEPROM. `BUILTINPATCHESDISABLEDADDR` uses `0` to show the 8 built-in patches and `1` to hide them. Erased or invalid values default to showing built-in patches.
 
 ### Display rendering
 

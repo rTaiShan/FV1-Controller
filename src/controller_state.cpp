@@ -10,5 +10,11 @@ uint8_t prevNextCode = 0;
 uint16_t store = 0;
 
 bool momentarySwitch = false;
+bool builtinPatchesDisabled = false;
 int8_t selectedProgram = 0;
-int8_t oldSelectedProgram = fv1controller::NUMPATCHES;
+int8_t oldSelectedProgram = fv1controller::MAX_PATCH_COUNT;
+
+uint8_t getAvailablePatchCount()
+{
+    return builtinPatchesDisabled ? fv1controller::CUSTOM_PATCH_COUNT : fv1controller::MAX_PATCH_COUNT;
+}

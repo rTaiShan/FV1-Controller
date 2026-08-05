@@ -16,5 +16,8 @@ extern uint8_t prevNextCode;
 extern uint16_t store;
 
 extern bool momentarySwitch;
+extern bool builtinPatchesDisabled;
 extern int8_t selectedProgram;
 extern int8_t oldSelectedProgram;
+
+uint8_t getAvailablePatchCount();
