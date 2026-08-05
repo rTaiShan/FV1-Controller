@@ -35,7 +35,7 @@ void loadStoredSwitchMode()
 
 int8_t readRotary()
 {
-    static int8_t rot_enc_table[] = {0, 1, 1, 0, 1, 0, 0, 1, 1, 0, 0, 1, 0, 1, 1, 0};
+    static const int8_t rot_enc_table[] = {0, 1, 1, 0, 1, 0, 0, 1, 1, 0, 0, 1, 0, 1, 1, 0};
 
     prevNextCode <<= 2;
     if (digitalRead(fv1controller::ROTARYDATAPIN))
@@ -83,4 +83,13 @@ void handleEncoderButton()
         EEPROM.update(fv1controller::SAVEDPATCHADDR, selectedProgram);
     if (encoderButton.isDoubleClick())
         loadFavoritePatchSelection();
+}
+
+namespace {
+void (*const inputHandlerEntryPoints[])() = {
+    initializePins,
+    loadStoredSwitchMode,
+    updateRotary,
+    handleEncoderButton,
+};
 }

@@ -82,3 +82,7 @@ void initializeDisplay()
     display.setTextSize(1);
     display.display();
 }
+
+namespace {
+void (*const displayHandlerEntryPoints[])() = {handleScreen, initializeDisplay};
+}

@@ -103,18 +103,6 @@ bool dataChanged()
     return false;
 }
 
-void printSipoData()
-{
-    sendProtocolPrint("RELAY at pin Q" + String(fv1controller::RELAYINDEX + 1) + (sipoData[fv1controller::RELAYINDEX] ? " HIGH" : " LOW"));
-    sendProtocolPrint("T0 at pin Q" + String(fv1controller::T0INDEX + 1) + (sipoData[fv1controller::T0INDEX] ? " HIGH" : " LOW"));
-    sendProtocolPrint("S0 at pin Q" + String(fv1controller::S0INDEX + 1) + (sipoData[fv1controller::S0INDEX] ? " HIGH" : " LOW"));
-    sendProtocolPrint("S1 at pin Q" + String(fv1controller::S1INDEX + 1) + (sipoData[fv1controller::S1INDEX] ? " HIGH" : " LOW"));
-    sendProtocolPrint("S2 at pin Q" + String(fv1controller::S2INDEX + 1) + (sipoData[fv1controller::S2INDEX] ? " HIGH" : " LOW"));
-    sendProtocolPrint("EEPROMENABLE0 at pin Q" + String(fv1controller::EEPROMENABLE0INDEX + 1) + (sipoData[fv1controller::EEPROMENABLE0INDEX] ? " HIGH" : " LOW"));
-    sendProtocolPrint("EEPROMENABLE1 at pin Q" + String(fv1controller::EEPROMENABLE1INDEX + 1) + (sipoData[fv1controller::EEPROMENABLE1INDEX] ? " HIGH" : " LOW"));
-    sendProtocolPrint("EEPROMENABLE2 at pin Q" + String(fv1controller::EEPROMENABLE2INDEX + 1) + (sipoData[fv1controller::EEPROMENABLE2INDEX] ? " HIGH" : " LOW"));
-}
-
 void writeSipoData()
 {
     if (!dataChanged())
@@ -198,4 +186,30 @@ void endExternalEepromAccess()
     writeSipoData();
     clearFootswitchInputState();
     externalEepromAccessActive = false;
+}
+
+#ifdef DEBUG
+void printSipoData()
+{
+    sendProtocolPrint("RELAY at pin Q" + String(fv1controller::RELAYINDEX + 1) + (sipoData[fv1controller::RELAYINDEX] ? " HIGH" : " LOW"));
+    sendProtocolPrint("T0 at pin Q" + String(fv1controller::T0INDEX + 1) + (sipoData[fv1controller::T0INDEX] ? " HIGH" : " LOW"));
+    sendProtocolPrint("S0 at pin Q" + String(fv1controller::S0INDEX + 1) + (sipoData[fv1controller::S0INDEX] ? " HIGH" : " LOW"));
+    sendProtocolPrint("S1 at pin Q" + String(fv1controller::S1INDEX + 1) + (sipoData[fv1controller::S1INDEX] ? " HIGH" : " LOW"));
+    sendProtocolPrint("S2 at pin Q" + String(fv1controller::S2INDEX + 1) + (sipoData[fv1controller::S2INDEX] ? " HIGH" : " LOW"));
+    sendProtocolPrint("EEPROMENABLE0 at pin Q" + String(fv1controller::EEPROMENABLE0INDEX + 1) + (sipoData[fv1controller::EEPROMENABLE0INDEX] ? " HIGH" : " LOW"));
+    sendProtocolPrint("EEPROMENABLE1 at pin Q" + String(fv1controller::EEPROMENABLE1INDEX + 1) + (sipoData[fv1controller::EEPROMENABLE1INDEX] ? " HIGH" : " LOW"));
+    sendProtocolPrint("EEPROMENABLE2 at pin Q" + String(fv1controller::EEPROMENABLE2INDEX + 1) + (sipoData[fv1controller::EEPROMENABLE2INDEX] ? " HIGH" : " LOW"));
+}
+#endif
+
+namespace {
+void (*const sipoVoidEntryPoints[])() = {
+    initializeFootswitchInterrupt,
+    handleSIPOEncoder,
+    endExternalEepromAccess,
+};
+
+bool (*const sipoIndexedEntryPoints[])(uint8_t) = {
+    beginExternalEepromAccess,
+};
 }

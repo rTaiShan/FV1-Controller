@@ -250,7 +250,29 @@ From the repository root:
 - Upload:
   - pio run --target upload
 
+Test commands:
+
+- Native protocol helper tests:
+  - pio test -e native -f test_protocol_utils
+- Unity protocol helper tests:
+  - pio test -e pro8MHzatmega328 -f test_protocol_utils
+- Unity protocol helper compile-only check:
+  - pio test -e pro8MHzatmega328 -f test_protocol_utils --without-uploading --without-testing
+- Host-side serial protocol smoke test:
+  - python3 test/host/protocol_smoke_test.py --port /dev/ttyUSB0
+- PlatformIO VS Code sidebar custom targets:
+  - Test: Native Protocol Utils
+  - Test: Protocol Utils Build
+  - Test: Protocol Utils
+  - Test: Host Protocol Smoke
+
 The project has been built successfully with PlatformIO.
+
+The test layout is split intentionally:
+
+- test/test_protocol_utils contains PlatformIO/Unity firmware tests for pure protocol helper logic.
+- test/host contains Python/pyserial smoke tests that talk to the already-flashed normal firmware over serial.
+- env:native runs the pure protocol helper Unity tests locally without uploading to Arduino hardware.
 
 ## Current known state
 

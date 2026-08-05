@@ -1,6 +1,10 @@
 #pragma once
 
+#if __has_include(<Arduino.h>)
 #include <Arduino.h>
+#else
+#include <stdint.h>
+#endif
 
 namespace fv1controller {
 

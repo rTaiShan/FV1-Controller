@@ -24,3 +24,7 @@ void loop()
     handleSIPOEncoder();
     handleScreen();
 }
+
+namespace {
+void (*const arduinoEntryPoints[])() = {setup, loop};
+}

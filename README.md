@@ -283,6 +283,10 @@ This project uses PlatformIO.
 3. Upload it to the board:
    - pio run --target upload
 
+## Testing
+
+See `TEST_PLAN.md` for the step-by-step validation plan. It includes native and AVR PlatformIO Unity tests, the `test/host/protocol_smoke_test.py` Python/pyserial protocol test script, and a manual hardware checklist for LCD, favorite patch, footswitch, relay, SIPO, FV-1, and external EEPROM behavior.
+
 ## Notes on status
 
 The firmware is a functional prototype rather than a production design. The core control flow, display behavior, and EEPROM/PROGMEM patch handling are implemented and verified by compilation, but the system has not been validated on a complete hardware setup beyond the firmware-level implementation.
@@ -292,4 +296,4 @@ The firmware is a functional prototype rather than a production design. The core
 - include/: empty project include folder retained by PlatformIO
 - lib/: empty project library folder retained by PlatformIO
 - src/: firmware sources and headers
-- test/: placeholder test folder
+- test/: PlatformIO Unity tests and host-side protocol smoke tests

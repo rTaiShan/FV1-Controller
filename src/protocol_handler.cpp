@@ -6,6 +6,7 @@
 #include "config.h"
 #include "display_handler.h"
 #include "input_handler.h"
+#include "protocol_utils.h"
 #include "sipo_handler.h"
 
 namespace {
@@ -26,27 +27,6 @@ void sendError(const __FlashStringHelper* error)
     Serial.println(error);
 }
 
-bool isExternalEepromIdx(uint8_t idx)
-{
-    return idx >= 1 && idx <= 3;
-}
-
-bool isValidEepromIdx(uint8_t idx)
-{
-    return idx == 0 || isExternalEepromIdx(idx);
-}
-
-bool rangeFits(uint16_t start, uint16_t len, uint16_t size)
-{
-    return static_cast<uint32_t>(start) + len <= size;
-}
-
-bool crossesExternalEepromPage(uint16_t start, uint16_t len)
-{
-    return (start / fv1controller::EXTERNAL_EEPROM_PAGE_SIZE) !=
-           ((start + len - 1) / fv1controller::EXTERNAL_EEPROM_PAGE_SIZE);
-}
-
 void beginExternalWire()
 {
     Wire.begin();
@@ -62,59 +42,6 @@ bool wireTimedOut()
 void clearWireTimeout()
 {
     Wire.clearWireTimeoutFlag();
-}
-
-bool parseDecimalToken(char* token, uint16_t& value)
-{
-    if (token == nullptr || *token == '\0')
-    {
-        return false;
-    }
-
-    char* end = nullptr;
-    unsigned long parsed = strtoul(token, &end, 10);
-    if (*end != '\0' || parsed > 0xffff)
-    {
-        return false;
-    }
-
-    value = static_cast<uint16_t>(parsed);
-    return true;
-}
-
-int8_t hexValue(char c)
-{
-    if (c >= '0' && c <= '9')
-    {
-        return c - '0';
-    }
-    if (c >= 'A' && c <= 'F')
-    {
-        return c - 'A' + 10;
-    }
-    if (c >= 'a' && c <= 'f')
-    {
-        return c - 'a' + 10;
-    }
-    return -1;
-}
-
-bool parseHexByteToken(char* token, uint8_t& value)
-{
-    if (token == nullptr || token[0] == '\0' || token[1] == '\0' || token[2] != '\0')
-    {
-        return false;
-    }
-
-    int8_t high = hexValue(token[0]);
-    int8_t low = hexValue(token[1]);
-    if (high < 0 || low < 0)
-    {
-        return false;
-    }
-
-    value = static_cast<uint8_t>((high << 4) | low);
-    return true;
 }
 
 void printHexByte(uint8_t value)
@@ -181,7 +108,7 @@ void applyInternalEepromWrite(uint16_t start, uint16_t len)
 
 void writeInternalEeprom(uint16_t start, const uint8_t* payload, uint16_t len)
 {
-    if (!rangeFits(start, len, fv1controller::INTERNAL_EEPROM_SIZE))
+    if (!fv1controller::protocol::rangeFits(start, len, fv1controller::INTERNAL_EEPROM_SIZE))
     {
         sendError(F("BAD_RANGE"));
         return;
@@ -315,12 +242,12 @@ void dumpExternalEeprom(uint8_t idx)
 
 void handleExternalEepromWrite(uint8_t idx, uint16_t start, const uint8_t* payload, uint16_t len)
 {
-    if (!rangeFits(start, len, fv1controller::EXTERNAL_EEPROM_SIZE))
+    if (!fv1controller::protocol::rangeFits(start, len, fv1controller::EXTERNAL_EEPROM_SIZE))
     {
         sendError(F("BAD_RANGE"));
         return;
     }
-    if (crossesExternalEepromPage(start, len))
+    if (fv1controller::protocol::crossesExternalEepromPage(start, len))
     {
         sendError(F("PAGE_CROSS"));
         return;
@@ -360,7 +287,7 @@ void handlePing()
 void handleDumpCommand()
 {
     uint16_t idx = 0;
-    if (!parseDecimalToken(nextToken(), idx))
+    if (!fv1controller::protocol::parseDecimalToken(nextToken(), idx))
     {
         sendError(F("BAD_RANGE"));
         return;
@@ -370,7 +297,7 @@ void handleDumpCommand()
         sendError(F("BAD_COMMAND"));
         return;
     }
-    if (idx > 0xff || !isValidEepromIdx(static_cast<uint8_t>(idx)))
+    if (idx > 0xff || !fv1controller::protocol::isValidEepromIdx(static_cast<uint8_t>(idx)))
     {
         sendError(F("BAD_IDX"));
         return;
@@ -391,12 +318,14 @@ void handleWriteCommand()
     uint16_t start = 0;
     uint16_t len = 0;
 
-    if (!parseDecimalToken(nextToken(), idx) || !parseDecimalToken(nextToken(), start) || !parseDecimalToken(nextToken(), len))
+    if (!fv1controller::protocol::parseDecimalToken(nextToken(), idx) ||
+        !fv1controller::protocol::parseDecimalToken(nextToken(), start) ||
+        !fv1controller::protocol::parseDecimalToken(nextToken(), len))
     {
         sendError(F("BAD_RANGE"));
         return;
     }
-    if (idx > 0xff || !isValidEepromIdx(static_cast<uint8_t>(idx)))
+    if (idx > 0xff || !fv1controller::protocol::isValidEepromIdx(static_cast<uint8_t>(idx)))
     {
         sendError(F("BAD_IDX"));
         return;
@@ -410,7 +339,7 @@ void handleWriteCommand()
     uint8_t payload[fv1controller::PROTOCOL_MAX_WRITE_LEN];
     for (uint16_t i = 0; i < len; i++)
     {
-        if (!parseHexByteToken(nextToken(), payload[i]))
+        if (!fv1controller::protocol::parseHexByteToken(nextToken(), payload[i]))
         {
             sendError(F("BAD_HEX"));
             return;
@@ -434,7 +363,7 @@ void handleWriteCommand()
 void processProtocolLine(char* line)
 {
     // strtok replaces spaces with '\0' and keeps an internal cursor for following tokens.
-    char* command = strtok(line, " ");
+    const char* command = strtok(line, " ");
     if (command == nullptr)
     {
         return;
@@ -515,4 +444,14 @@ void sendProtocolPrint(const String& message)
         Serial.print((c == '\r' || c == '\n') ? ' ' : c);
     }
     Serial.println();
+}
+
+namespace {
+void (*const protocolVoidEntryPoints[])() = {
+    handleProtocol,
+};
+
+void (*const protocolPrintEntryPoints[])(const String&) = {
+    sendProtocolPrint,
+};
 }
