@@ -1,10 +1,12 @@
 "use client"
 
-import { useEffect, useMemo, useRef, useState } from "react"
-import { Cable, ChevronDown, ChevronRight, Download, Menu as MenuIcon, Star, Upload } from "lucide-react"
+import { useEffect, useMemo, useRef, useState, type ReactNode } from "react"
+import { Cable, ChevronDown, ChevronRight, Download, Menu as MenuIcon, Star, Undo2, Upload } from "lucide-react"
+import { toast } from "sonner"
 
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
+import { ButtonGroup } from "@/components/ui/button-group"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog"
 import {
@@ -15,12 +17,12 @@ import {
 } from "@/components/ui/dropdown-menu"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
-import { SegmentedControl, type SegmentedControlOption } from "@/components/ui/segmented-control"
 import { Slider } from "@/components/ui/slider"
 import { Switch } from "@/components/ui/switch"
+import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
-import { ToastViewport, type ToastMessage } from "@/components/ui/toast"
 import { Tooltip, TooltipProvider } from "@/components/ui/tooltip"
+import { ToggleGroup, ToggleGroupItem } from "@/components/ui/toggle-group"
 import {
   bytesToHex,
   dumpEeprom,
@@ -43,6 +45,12 @@ type DeviceState = {
   footswitchMode: FootswitchMode
   internalBytes: Uint8Array
   screen: { bias: number; contrast: number }
+}
+type ChangeRow = {
+  after: string
+  before: string
+  label: string
+  revert: () => void
 }
 
 const BAUD_RATE = 57600
@@ -77,11 +85,6 @@ const mockSerialPort: AppSerialPort = {
   readable: null,
   writable: null,
 }
-
-const footswitchModeOptions: SegmentedControlOption[] = [
-  { value: "toggle", label: "Toggle" },
-  { value: "momentary", label: "Momentary" },
-]
 
 const defaultCustomPatches: PatchText[] = [
   ["Custom 01", "Gain 3", "Tone 2", "Mix 4"],
@@ -394,21 +397,30 @@ function ScreenSettingControl({
   value: number
 }) {
   const percentage = ((value - min) / (max - min)) * 100
+  const valuePosition =
+    percentage <= 8
+      ? { className: "absolute left-0 top-0 font-semibold text-foreground", style: undefined }
+      : percentage >= 92
+        ? {
+            className: "absolute right-0 top-0 font-semibold text-foreground",
+            style: undefined,
+          }
+        : {
+            className: "absolute top-0 -translate-x-1/2 font-semibold text-foreground",
+            style: { left: `${percentage}%` },
+          }
 
   return (
-    <div className="grid gap-2.5">
-      <div className="flex items-center gap-2">
+    <div className="grid min-w-0 gap-2.5">
+      <div className="flex min-w-0 items-center gap-2">
         <ChevronRight className="size-3 rotate-90 text-muted-foreground" />
         <Label htmlFor={label}>{label}</Label>
       </div>
-      <div className="grid gap-1">
+      <div className="grid min-w-0 gap-1">
         <Slider max={max} min={min} onValueChange={onValueChange} value={value} />
         <div className="relative h-5 text-xs text-muted-foreground">
           <span className="absolute left-0 top-0">{min}</span>
-          <span
-            className="absolute top-0 -translate-x-1/2 font-semibold text-foreground"
-            style={{ left: `${percentage}%` }}
-          >
+          <span className={valuePosition.className} style={valuePosition.style}>
             {value}
           </span>
           <span className="absolute right-0 top-0">{max}</span>
@@ -434,26 +446,33 @@ function StepTabs({
   ]
 
   return (
-    <div className="mx-auto grid w-full max-w-3xl gap-2 rounded-lg border border-border bg-card p-1 sm:grid-cols-3">
-      {steps.map((step) => {
-        const locked = step.id !== "connect" && !connected
+    <Tabs className="mx-auto w-full max-w-5xl" value={activeStep} onValueChange={(value) => onStepChange(value as Step)}>
+      <TabsList className="grid h-auto w-full grid-cols-1 gap-1 rounded-lg border border-border bg-card p-1 sm:h-10 sm:grid-cols-3 [&_[data-slot=tabs-trigger]]:h-8 sm:[&_[data-slot=tabs-trigger]]:h-full">
+        {steps.map((step) => {
+          const locked = step.id !== "connect" && !connected
 
-        return (
-          <button
-            key={step.id}
-            className={[
-              "rounded-md px-2.5 py-2 text-center text-sm font-medium transition-colors outline-none focus-visible:ring-3 focus-visible:ring-ring/50",
-              activeStep === step.id ? "bg-primary text-primary-foreground" : "text-muted-foreground hover:bg-muted",
-              locked ? "cursor-not-allowed opacity-50 hover:bg-transparent" : "",
-            ].join(" ")}
-            onClick={() => onStepChange(step.id)}
-            type="button"
-          >
-            {step.label}
-          </button>
-        )
-      })}
-    </div>
+          return (
+            <TabsTrigger
+              key={step.id}
+              aria-disabled={locked}
+              className="data-active:border-primary data-active:bg-primary data-active:text-primary-foreground dark:data-active:border-primary dark:data-active:bg-primary dark:data-active:text-primary-foreground"
+              disabled={locked}
+              value={step.id}
+            >
+              {step.label}
+            </TabsTrigger>
+          )
+        })}
+      </TabsList>
+    </Tabs>
+  )
+}
+
+function TabPanel({ children }: { children: ReactNode }) {
+  return (
+    <section data-testid="active-tab-panel" className="mx-auto grid w-full min-w-0 max-w-5xl gap-5">
+      {children}
+    </section>
   )
 }
 
@@ -489,10 +508,8 @@ export default function Page() {
   const [programFiles, setProgramFiles] = useState<Record<number, ProgramFileState>>({})
   const [serialBusy, setSerialBusy] = useState(false)
   const [serialPort, setSerialPort] = useState<AppSerialPort | null>(null)
-  const [toasts, setToasts] = useState<ToastMessage[]>([])
   const lockRef = useRef(false)
   const mockMemoryRef = useRef<{ external: Uint8Array[]; internal: Uint8Array } | null>(null)
-  const toastIdRef = useRef(0)
   const connected = serialPort !== null
   const visiblePatches = currentState.builtInPatchesDisabled
     ? currentState.customPatches.map((patch, id) => ({ ...patch, id }))
@@ -506,52 +523,113 @@ export default function Page() {
       return []
     }
 
-    const rows: Array<[string, string, string]> = []
+    const rows: ChangeRow[] = []
     const beforeBytes = loadedState.internalBytes
     const afterBytes = makeChangedInternalBytes(currentState)
 
     if (loadedState.footswitchMode !== currentState.footswitchMode) {
-      rows.push([
-        "Footswitch mode",
-        loadedState.footswitchMode === "toggle" ? "Toggle" : "Momentary",
-        currentState.footswitchMode === "toggle" ? "Toggle" : "Momentary",
-      ])
+      rows.push({
+        after: currentState.footswitchMode === "toggle" ? "Toggle" : "Momentary",
+        before: loadedState.footswitchMode === "toggle" ? "Toggle" : "Momentary",
+        label: "Footswitch mode",
+        revert: () => setCurrentState((state) => ({ ...state, footswitchMode: loadedState.footswitchMode })),
+      })
     }
     if (loadedState.screen.bias !== currentState.screen.bias) {
-      rows.push(["Bias", String(loadedState.screen.bias), String(currentState.screen.bias)])
+      rows.push({
+        after: String(currentState.screen.bias),
+        before: String(loadedState.screen.bias),
+        label: "Bias",
+        revert: () =>
+          setCurrentState((state) => ({ ...state, screen: { ...state.screen, bias: loadedState.screen.bias } })),
+      })
     }
     if (loadedState.screen.contrast !== currentState.screen.contrast) {
-      rows.push(["Contrast", String(loadedState.screen.contrast), String(currentState.screen.contrast)])
+      rows.push({
+        after: String(currentState.screen.contrast),
+        before: String(loadedState.screen.contrast),
+        label: "Contrast",
+        revert: () =>
+          setCurrentState((state) => ({
+            ...state,
+            screen: { ...state.screen, contrast: loadedState.screen.contrast },
+          })),
+      })
     }
     if (loadedState.builtInPatchesDisabled !== currentState.builtInPatchesDisabled) {
-      rows.push([
-        "Built-in patches",
-        loadedState.builtInPatchesDisabled ? "Disabled" : "Enabled",
-        currentState.builtInPatchesDisabled ? "Disabled" : "Enabled",
-      ])
+      rows.push({
+        after: currentState.builtInPatchesDisabled ? "Disabled" : "Enabled",
+        before: loadedState.builtInPatchesDisabled ? "Disabled" : "Enabled",
+        label: "Built-in patches",
+        revert: () =>
+          setCurrentState((state) => ({
+            ...state,
+            builtInPatchesDisabled: loadedState.builtInPatchesDisabled,
+            favoritePatch:
+              loadedState.builtInPatchesDisabled && state.favoritePatch >= CUSTOM_PATCH_COUNT ? 0 : state.favoritePatch,
+          })),
+      })
     }
     if (loadedState.favoritePatch !== currentState.favoritePatch) {
-      rows.push(["Favorite patch", String(loadedState.favoritePatch + 1), String(currentState.favoritePatch + 1)])
+      rows.push({
+        after: String(currentState.favoritePatch + 1),
+        before: String(loadedState.favoritePatch + 1),
+        label: "Favorite patch",
+        revert: () => setCurrentState((state) => ({ ...state, favoritePatch: loadedState.favoritePatch })),
+      })
     }
 
     currentState.customPatches.forEach((patch, patchIndex) => {
       const loadedPatch = loadedState.customPatches[patchIndex]
       if (loadedPatch.name !== patch.name) {
-        rows.push([`Patch ${patchIndex + 1} name`, loadedPatch.name, patch.name])
+        rows.push({
+          after: patch.name,
+          before: loadedPatch.name,
+          label: `Patch ${patchIndex + 1} name`,
+          revert: () =>
+            setCurrentState((state) => ({
+              ...state,
+              customPatches: state.customPatches.map((currentPatch, index) =>
+                index === patchIndex ? { ...currentPatch, name: loadedPatch.name } : currentPatch
+              ),
+            })),
+        })
       }
       patch.parameters.forEach((parameter, parameterIndex) => {
         if (loadedPatch.parameters[parameterIndex] !== parameter) {
-          rows.push([
-            `Patch ${patchIndex + 1} parameter ${parameterIndex + 1}`,
-            loadedPatch.parameters[parameterIndex],
-            parameter,
-          ])
+          rows.push({
+            after: parameter,
+            before: loadedPatch.parameters[parameterIndex],
+            label: `Patch ${patchIndex + 1} parameter ${parameterIndex + 1}`,
+            revert: () =>
+              setCurrentState((state) => ({
+                ...state,
+                customPatches: state.customPatches.map((currentPatch, index) => {
+                  if (index !== patchIndex) {
+                    return currentPatch
+                  }
+                  const parameters = [...currentPatch.parameters] as [string, string, string]
+                  parameters[parameterIndex] = loadedPatch.parameters[parameterIndex]
+                  return { ...currentPatch, parameters }
+                }),
+              })),
+          })
         }
       })
     })
 
     Object.entries(programFiles).forEach(([patchId, program]) => {
-      rows.push([`Patch ${Number(patchId) + 1} program`, "Pedal EEPROM", program.file.name])
+      rows.push({
+        after: program.file.name,
+        before: "Pedal EEPROM",
+        label: `Patch ${Number(patchId) + 1} program`,
+        revert: () =>
+          setProgramFiles((currentFiles) => {
+            const nextFiles = { ...currentFiles }
+            delete nextFiles[Number(patchId)]
+            return nextFiles
+          }),
+      })
     })
 
     if (arraysEqual(beforeBytes, afterBytes) && Object.keys(programFiles).length === 0) {
@@ -627,14 +705,17 @@ export default function Page() {
     }
   }, [])
 
-  function showToast(title: string, message: string, variant: ToastMessage["variant"] = "default") {
-    const id = ++toastIdRef.current
-    setToasts((current) => [...current, { id, message, title, variant }].slice(-4))
-    window.setTimeout(() => setToasts((current) => current.filter((toast) => toast.id !== id)), 5000)
-  }
-
-  function dismissToast(id: number) {
-    setToasts((current) => current.filter((toast) => toast.id !== id))
+  function showToast(title: string, message: string, variant: "default" | "destructive" | "success" = "default") {
+    const options = { description: message }
+    if (variant === "success") {
+      toast.success(title, options)
+      return
+    }
+    if (variant === "destructive") {
+      toast.error(title, options)
+      return
+    }
+    toast(title, options)
   }
 
   async function withSerialLock<T>(label: string, operation: () => Promise<T>) {
@@ -1011,7 +1092,7 @@ export default function Page() {
               <Input
                 id="settings-json-import"
                 accept="application/json,.json"
-                className="sr-only"
+                className="hidden"
                 type="file"
                 onChange={importSettingsFromJson}
               />
@@ -1060,15 +1141,16 @@ export default function Page() {
           <StepTabs activeStep={activeStep} connected={connected} onStepChange={goToStep} />
 
           {activeStep === "connect" ? (
-            <Card>
+            <TabPanel>
+            <Card className="w-full">
               <CardHeader className="flex flex-col gap-3 text-center md:flex-row md:items-center md:justify-between md:text-left">
                 <div>
                   <CardTitle>Connect to Serial Device</CardTitle>
                   <CardDescription>Select a serial device to begin.</CardDescription>
                 </div>
-                <div className="mx-auto flex w-full max-w-sm md:mx-0 md:w-auto">
+                <ButtonGroup className="mx-auto w-full max-w-sm md:mx-0 md:w-auto">
                   <Button
-                    className="min-w-0 flex-1 rounded-r-none md:flex-none"
+                    className="min-w-0 flex-1 md:flex-none"
                     disabled={connecting || serialBusy}
                     onClick={selectSerialDevice}
                   >
@@ -1080,7 +1162,7 @@ export default function Page() {
                       render={
                         <Button
                           aria-label="More connection options"
-                          className="rounded-l-none border-l-primary-foreground/20 px-2"
+                          className="px-2"
                           disabled={connecting || serialBusy}
                         />
                       }
@@ -1091,28 +1173,40 @@ export default function Page() {
                       <DropdownMenuItem onClick={() => void connectMockDevice()}>Use mock device</DropdownMenuItem>
                     </DropdownMenuContent>
                   </DropdownMenu>
-                </div>
+                </ButtonGroup>
               </CardHeader>
             </Card>
+            </TabPanel>
           ) : null}
 
           {activeStep === "settings" ? (
-            <div className="grid min-w-0 gap-5">
-              <section className="grid min-w-0 gap-5 lg:grid-cols-2">
-                <Card>
-                  <CardHeader>
+            <TabPanel>
+              <section className="grid w-full min-w-0 gap-5 lg:grid-cols-2">
+                <Card className="w-full">
+                  <CardHeader className="text-center md:text-left">
                     <CardTitle>Footswitch</CardTitle>
                     <CardDescription>Bypass switch behavior</CardDescription>
                   </CardHeader>
                   <CardContent className="grid gap-4">
-                    <SegmentedControl
+                    <ToggleGroup
                       aria-label="Footswitch mode"
-                      onValueChange={(value) =>
-                        setCurrentState((state) => ({ ...state, footswitchMode: value as FootswitchMode }))
-                      }
-                      options={footswitchModeOptions}
-                      value={currentState.footswitchMode}
-                    />
+                      className="grid w-full grid-cols-2 rounded-md border border-input bg-muted/40 p-0.5"
+                      spacing={0}
+                      value={[currentState.footswitchMode]}
+                      onValueChange={(value) => {
+                        const nextValue = value[0]
+                        if (nextValue === "toggle" || nextValue === "momentary") {
+                          setCurrentState((state) => ({ ...state, footswitchMode: nextValue }))
+                        }
+                      }}
+                    >
+                      <ToggleGroupItem className="w-full" value="toggle">
+                        Toggle
+                      </ToggleGroupItem>
+                      <ToggleGroupItem className="w-full" value="momentary">
+                        Momentary
+                      </ToggleGroupItem>
+                    </ToggleGroup>
                     <div className="grid gap-1 border-t border-border pt-3">
                       <div className="text-sm font-medium text-foreground">
                         {currentState.footswitchMode === "toggle" ? "Toggle mode" : "Momentary mode"}
@@ -1126,8 +1220,8 @@ export default function Page() {
                   </CardContent>
                 </Card>
 
-                <Card>
-                  <CardHeader>
+                <Card className="w-full">
+                  <CardHeader className="text-center md:text-left">
                     <CardTitle>Screen Calibration</CardTitle>
                     <CardDescription>Display calibration values</CardDescription>
                   </CardHeader>
@@ -1151,14 +1245,14 @@ export default function Page() {
                 </Card>
               </section>
 
-              <Card>
-                <CardHeader className="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
-                  <div>
+              <Card className="w-full">
+                <CardHeader className="flex flex-col items-center gap-3 text-center md:flex-row md:items-center md:justify-between md:text-left">
+                  <div className="min-w-0">
                     <CardTitle>Edit Patches</CardTitle>
                     <CardDescription>Patch names, screen parameters, favorite patch, and Spin program files</CardDescription>
                   </div>
                   <Tooltip content="Enable or disable the FV-1 built-in patches on the device.">
-                    <div className="flex items-center gap-2">
+                    <div className="flex shrink-0 items-center gap-2">
                       <Switch
                         checked={!currentState.builtInPatchesDisabled}
                         id="built-in-patches"
@@ -1273,7 +1367,7 @@ export default function Page() {
                                 <Input
                                   id={fileInputId}
                                   accept=".hex,.bin"
-                                  className="sr-only"
+                                  className="hidden"
                                   type="file"
                                   onChange={(event) => void handleProgramFile(patch.id, event.target.files?.[0])}
                                 />
@@ -1309,7 +1403,7 @@ export default function Page() {
                     })}
                   </div>
 
-                  <div className="hidden md:block">
+                  <div className="hidden min-w-0 md:block">
                   <Table>
                     <TableHeader>
                       <TableRow>
@@ -1423,7 +1517,7 @@ export default function Page() {
                                   <Input
                                     id={fileInputId}
                                     accept=".hex,.bin"
-                                    className="sr-only"
+                                    className="hidden"
                                     type="file"
                                     onChange={(event) => void handleProgramFile(patch.id, event.target.files?.[0])}
                                   />
@@ -1463,26 +1557,32 @@ export default function Page() {
                 </CardContent>
               </Card>
 
-              <div className="flex flex-wrap justify-end gap-2">
+              <div className="flex min-w-0 flex-col gap-2 sm:flex-row sm:flex-wrap sm:justify-end">
                 <DisabledActionTooltip disabled={!hasChanges || serialBusy} message={unavailableMessage}>
-                  <Button disabled={!hasChanges || serialBusy} variant="outline" onClick={() => void uploadSettings()}>
+                  <Button
+                    className="w-full sm:w-auto"
+                    disabled={!hasChanges || serialBusy}
+                    variant="outline"
+                    onClick={() => void uploadSettings()}
+                  >
                     <Upload />
                     Upload settings without reviewing
                   </Button>
                 </DisabledActionTooltip>
                 <DisabledActionTooltip disabled={!hasChanges || serialBusy} message={unavailableMessage}>
-                  <Button disabled={!hasChanges || serialBusy} onClick={() => goToStep("review")}>
+                  <Button className="w-full sm:w-auto" disabled={!hasChanges || serialBusy} onClick={() => goToStep("review")}>
                     Review Changes
                   </Button>
                 </DisabledActionTooltip>
               </div>
-            </div>
+            </TabPanel>
           ) : null}
 
           {activeStep === "review" ? (
-            <Card>
-              <CardHeader className="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
-                <div>
+            <TabPanel>
+            <Card className="w-full">
+              <CardHeader className="flex flex-col items-center gap-3 text-center md:flex-row md:items-center md:justify-between md:text-left">
+                <div className="min-w-0">
                   <CardTitle>View and Modify Changes</CardTitle>
                   <CardDescription>Review the staged settings before uploading them to the pedal.</CardDescription>
                 </div>
@@ -1496,14 +1596,28 @@ export default function Page() {
                         <TableHead>Setting</TableHead>
                         <TableHead>Current</TableHead>
                         <TableHead>New</TableHead>
+                        <TableHead className="w-20 text-center">Revert</TableHead>
                       </TableRow>
                     </TableHeader>
                     <TableBody>
-                      {changeRows.map(([label, before, after]) => (
-                        <TableRow key={`${label}-${before}-${after}`}>
-                          <TableCell className="font-medium">{label}</TableCell>
-                          <TableCell className="text-muted-foreground">{before}</TableCell>
-                          <TableCell className="font-medium text-primary">{after}</TableCell>
+                      {changeRows.map((row) => (
+                        <TableRow key={`${row.label}-${row.before}-${row.after}`}>
+                          <TableCell className="font-medium">{row.label}</TableCell>
+                          <TableCell className="text-muted-foreground">{row.before}</TableCell>
+                          <TableCell className="font-medium text-primary">{row.after}</TableCell>
+                          <TableCell className="text-center">
+                            <Tooltip content={`Discard ${row.label} change`}>
+                              <Button
+                                aria-label={`Discard ${row.label} change`}
+                                size="icon-sm"
+                                type="button"
+                                variant="destructive"
+                                onClick={row.revert}
+                              >
+                                <Undo2 />
+                              </Button>
+                            </Tooltip>
+                          </TableCell>
                         </TableRow>
                       ))}
                     </TableBody>
@@ -1513,12 +1627,12 @@ export default function Page() {
                     No settings have changed.
                   </div>
                 )}
-                <div className="flex flex-wrap justify-end gap-2">
-                  <Button variant="outline" onClick={() => goToStep("settings")}>
+                <div className="flex min-w-0 flex-col gap-2 sm:flex-row sm:flex-wrap sm:justify-end">
+                  <Button className="w-full sm:w-auto" variant="outline" onClick={() => goToStep("settings")}>
                     Change Settings
                   </Button>
                   <DisabledActionTooltip disabled={!hasChanges || serialBusy} message={unavailableMessage}>
-                    <Button disabled={!hasChanges || serialBusy} onClick={() => void uploadSettings()}>
+                    <Button className="w-full sm:w-auto" disabled={!hasChanges || serialBusy} onClick={() => void uploadSettings()}>
                       <Upload />
                       Upload settings
                     </Button>
@@ -1526,9 +1640,9 @@ export default function Page() {
                 </div>
               </CardContent>
             </Card>
+            </TabPanel>
           ) : null}
         </div>
-        <ToastViewport toasts={toasts} onDismiss={dismissToast} />
       </main>
     </TooltipProvider>
   )
