@@ -2,6 +2,12 @@
 
 This is a Next.js template with shadcn/ui.
 
+## Node.js
+
+Use Node.js 22.23.5 or a newer Node 22 patch release. Run `nvm install` and
+`nvm use` from this directory to use the version in `.nvmrc`. The Docker build
+uses the same patched Node.js version in every stage.
+
 ## Adding components
 
 To add components to your app, run the following command:
